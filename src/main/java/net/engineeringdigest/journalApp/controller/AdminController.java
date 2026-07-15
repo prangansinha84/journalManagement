@@ -1,6 +1,5 @@
 package net.engineeringdigest.journalApp.controller;
 
-
 import net.engineeringdigest.journalApp.entity.User;
 import net.engineeringdigest.journalApp.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,16 +17,18 @@ public class AdminController {
     private UserService userService;
 
     @GetMapping("/all-users")
-    public ResponseEntity<?> getAllUsers(){
+    public ResponseEntity<?> getAllUsers() {
         List<User> all = userService.getAll();
-        if(all != null && !all.isEmpty()){
+
+        if (all != null && !all.isEmpty()) {
             return new ResponseEntity<>(all, HttpStatus.OK);
         }
+
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
     @PostMapping("/create-admin-user")
-    public void createUser(@RequestBody User user){
-        UserService.saveAdmin(user);
+    public void createUser(@RequestBody User user) {
+        userService.saveAdmin(user);
     }
 }

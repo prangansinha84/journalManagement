@@ -6,9 +6,7 @@ import net.engineeringdigest.journalApp.entity.User;
 import net.engineeringdigest.journalApp.repository.UserRepository;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -17,47 +15,57 @@ import java.util.Optional;
 
 @Slf4j
 @Service
-
-
-@Component
 public class UserService {
 
     @Autowired
-    private static UserRepository Userrepository;
+    private UserRepository userRepository;
 
-    private static final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(); //it is 1 implementation of many password encoders
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
-    public void saveUser(User user){
-        Userrepository.save(user);
+    // Save existing user (without encoding password)
+    public void saveUser(User user) {
+        userRepository.save(user);
     }
 
-    public void saveNewUser(User user){
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRoles(Arrays.asList("USER"));
-        Userrepository.save(user);
+    // Create new normal user
+    public boolean saveNewUser(User user) {
+        try {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            user.setRoles(Arrays.asList("USER"));
+
+            userRepository.save(user);
+
+            return true;
+        } catch (Exception e) {
+            log.error("Error occurred for {} :", user.getUserName(), e);
+            return false;
+        }
     }
 
-    public static void saveAdmin(User user){
+    // Create admin user
+    public void saveAdmin(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setRoles(Arrays.asList("USER", "ADMIN"));
-        Userrepository.save(user);
-    }
-    public List<User> getAll(){
-        return Userrepository.findAll();
+
+        userRepository.save(user);
     }
 
-   //basically:
-   //controller --> service -->repository -->databasee
-
-    public Optional<User> findById(@NonNull ObjectId id){
-        return Userrepository.findById(id);
+    public List<User> getAll() {
+        return userRepository.findAll();
     }
 
-    public void deleteById(ObjectId id){
-        Userrepository.deleteById(id);
+    // Controller -> Service -> Repository -> Database
+
+    public Optional<User> findById(@NonNull ObjectId id) {
+        return userRepository.findById(id);
     }
 
-    public User findByUserName(String username){
-        return Userrepository.findByUserName(username);
+    public void deleteById(ObjectId id) {
+        userRepository.deleteById(id);
+    }
+
+    public User findByUserName(String username) {
+        return userRepository.findByUserName(username);
     }
 }

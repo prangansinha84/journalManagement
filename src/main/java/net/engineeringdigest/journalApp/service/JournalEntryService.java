@@ -5,6 +5,7 @@ import net.engineeringdigest.journalApp.entity.JournalEntry;
 import net.engineeringdigest.journalApp.entity.User;
 import net.engineeringdigest.journalApp.repository.JournalEntryRepository;
 import org.bson.types.ObjectId;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 @Slf4j
 @Service
@@ -28,7 +30,8 @@ public class JournalEntryService {
     @Autowired
     private UserService userService;
 
-
+    @Autowired
+    private KafkaProducerService kafkaProducerService;
 
     public void saveEntry(JournalEntry journalentry){
         JournalEntry JournalEntry = null;
@@ -47,19 +50,28 @@ public class JournalEntryService {
         return journalEntryRepository.findById(id);
     }
 
-    @Transactional
-    public void saveEntry(JournalEntry journalEntry, String userName) {
-        Optional<User> userOpt = Optional.ofNullable(userService.findByUserName(userName));
-        if (userOpt.isPresent()) { User user = userOpt.get();
-            journalEntry.setDate(LocalDateTime.now());
-            JournalEntry saved = journalEntryRepository.save(journalEntry);
-            if (user.getJournalEntries() == null) {
-                user.setJournalEntries(new ArrayList<>()); }
-            user.getJournalEntries().add(saved);
-            //user.setUserName(null);
-            userService.saveUser(user); } }
 
-    @Transactional
+    //@Transactional
+    public void saveEntry(JournalEntry journalEntry, String userName) {
+        try {
+            User user = userService.findByUserName(userName);
+            journalEntry.setDate(LocalDateTime.now());
+
+            JournalEntry saved = journalEntryRepository.save(journalEntry);
+            user.getJournalEntries().add(saved);
+            userService.saveUser(user);
+
+            // Publish event AFTER successful save
+            kafkaProducerService.sendMessage(
+                    "User " + userName + " created journal: " + saved.getTitle() + ", Content: " + saved.getContent()
+            );
+
+        } catch (Exception e) {
+
+            throw new RuntimeException("An error occurred while saving the entry.", e);
+        }
+    }
+    //@Transactional
     public void deleteById(ObjectId id, String userName) {
         try {
             User user = userService.findByUserName(userName);
@@ -76,7 +88,6 @@ public class JournalEntryService {
             throw new RuntimeException("An error occurred while deleting the entry.", e);
         }
     }
-
 
 
 }
